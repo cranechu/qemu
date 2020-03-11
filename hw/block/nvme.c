@@ -42,6 +42,10 @@
 #include "trace.h"
 #include "nvme.h"
 
+#include <stdio.h>
+#include <time.h>
+
+
 #define NVME_GUEST_ERR(trace, fmt, ...) \
     do { \
         (trace_##trace)(__VA_ARGS__); \
@@ -383,6 +387,8 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 
     trace_nvme_rw(is_write ? "write" : "read", nlb, data_size, slba);
 
+    printf("%s, %ld, %d\n", is_write?"write":"read", slba, nlb);  // io recorder
+
     if (unlikely((slba + nlb) > ns->id_ns.nsze)) {
         block_acct_invalid(blk_get_stats(n->conf.blk), acct);
         trace_nvme_err_invalid_lba_range(slba, nlb, ns->id_ns.nsze);
@@ -414,11 +420,19 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     return NVME_NO_COMPLETE;
 }
 
-static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
+static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqid)
 {
     NvmeNamespace *ns;
     uint32_t nsid = le32_to_cpu(cmd->nsid);
 
+    char tmbuf[128];
+    struct tm* time;
+    struct timeval now;
+    qemu_gettimeofday(&now);
+    time = localtime(&now.tv_sec);
+    strftime(tmbuf, sizeof(tmbuf), "%Y-%m-%d %H:%M:%S", time);
+    printf("%s, %06ld, %d, ", tmbuf, now.tv_usec, sqid);    // io recorder: timestamp
+    
     if (unlikely(nsid == 0 || nsid > n->num_namespaces)) {
         trace_nvme_err_invalid_ns(nsid, n->num_namespaces);
         return NVME_INVALID_NSID | NVME_DNR;
@@ -427,13 +441,18 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
     ns = &n->namespaces[nsid - 1];
     switch (cmd->opcode) {
     case NVME_CMD_FLUSH:
+      printf("flush\n");
         return nvme_flush(n, ns, cmd, req);
     case NVME_CMD_WRITE_ZEROS:
+      printf("write zeroes\n");
         return nvme_write_zeros(n, ns, cmd, req);
     case NVME_CMD_WRITE:
     case NVME_CMD_READ:
         return nvme_rw(n, ns, cmd, req);
+    case NVME_CMD_DSM:
+      printf("trim\n");   # TODO: ranges data
     default:
+      printf("unknown\n");
         trace_nvme_err_invalid_opc(cmd->opcode);
         return NVME_INVALID_OPCODE | NVME_DNR;
     }
@@ -888,7 +907,7 @@ static void nvme_process_sq(void *opaque)
         memset(&req->cqe, 0, sizeof(req->cqe));
         req->cqe.cid = cmd.cid;
 
-        status = sq->sqid ? nvme_io_cmd(n, &cmd, req) :
+        status = sq->sqid ? nvme_io_cmd(n, &cmd, req, sq->sqid) :
             nvme_admin_cmd(n, &cmd, req);
         if (status != NVME_NO_COMPLETE) {
             req->status = status;
