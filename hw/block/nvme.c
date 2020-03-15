@@ -338,12 +338,29 @@ static void nvme_rw_cb(void *opaque, int ret)
 static uint16_t nvme_flush(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     NvmeRequest *req)
 {
+    printf("flush\n");
+  
     req->has_sg = false;
     block_acct_start(blk_get_stats(n->conf.blk), &req->acct, 0,
          BLOCK_ACCT_FLUSH);
     req->aiocb = blk_aio_flush(n->conf.blk, nvme_rw_cb, req);
 
     return NVME_NO_COMPLETE;
+}
+
+static uint16_t nvme_trim(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
+    NvmeRequest *req)
+{
+    NvmeDsmCmd *dsm = (NvmeDsmCmd *)cmd;
+    uint32_t attr = le16_to_cpu(dsm->attributes);
+    uint32_t nr   = le16_to_cpu(dsm->nr) + 1;
+
+    if (attr & NVME_DSMGMT_AD)
+    {
+      printf("%s, %d\n", "trims", nr);  // io recorder
+    }
+    
+    return NVME_SUCCESS;
 }
 
 static uint16_t nvme_write_zeros(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
@@ -357,6 +374,8 @@ static uint16_t nvme_write_zeros(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     uint64_t offset = slba << data_shift;
     uint32_t count = nlb << data_shift;
 
+    printf("%s, %ld, %d\n", "write_zeroes", slba, nlb);  // io recorder
+    
     if (unlikely(slba + nlb > ns->id_ns.nsze)) {
         trace_nvme_err_invalid_lba_range(slba, nlb, ns->id_ns.nsze);
         return NVME_LBA_RANGE | NVME_DNR;
@@ -442,17 +461,14 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqi
     ns = &n->namespaces[nsid - 1];
     switch (cmd->opcode) {
     case NVME_CMD_FLUSH:
-      printf("flush\n");
         return nvme_flush(n, ns, cmd, req);
     case NVME_CMD_WRITE_ZEROS:
-      printf("write zeroes\n");
         return nvme_write_zeros(n, ns, cmd, req);
     case NVME_CMD_WRITE:
     case NVME_CMD_READ:
         return nvme_rw(n, ns, cmd, req);
     case NVME_CMD_DSM:
-      printf("trim\n");   // TODO: ranges data
-      return NVME_SUCCESS;
+        return nvme_trim(n, ns, cmd, req);
     default:
       printf("unknown\n");
         trace_nvme_err_invalid_opc(cmd->opcode);
