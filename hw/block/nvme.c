@@ -452,6 +452,7 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqi
         return nvme_rw(n, ns, cmd, req);
     case NVME_CMD_DSM:
       printf("trim\n");   // TODO: ranges data
+      return NVME_SUCCESS;
     default:
       printf("unknown\n");
         trace_nvme_err_invalid_opc(cmd->opcode);
@@ -1380,7 +1381,7 @@ static void nvme_realize(PCIDevice *pci_dev, Error **errp)
 
     id->vid = cpu_to_le16(pci_get_word(pci_conf + PCI_VENDOR_ID));
     id->ssvid = cpu_to_le16(pci_get_word(pci_conf + PCI_SUBSYSTEM_VENDOR_ID));
-    strpadcpy((char *)id->mn, sizeof(id->mn), "QEMU NVMe Ctrl", ' ');
+    strpadcpy((char *)id->mn, sizeof(id->mn), "Pynvme NVMe SSD", ' ');
     strpadcpy((char *)id->fr, sizeof(id->fr), "1.0", ' ');
     strpadcpy((char *)id->sn, sizeof(id->sn), n->serial, ' ');
     id->rab = 6;
@@ -1393,7 +1394,7 @@ static void nvme_realize(PCIDevice *pci_dev, Error **errp)
     id->sqes = (0x6 << 4) | 0x6;
     id->cqes = (0x4 << 4) | 0x4;
     id->nn = cpu_to_le32(n->num_namespaces);
-    id->oncs = cpu_to_le16(NVME_ONCS_WRITE_ZEROS | NVME_ONCS_TIMESTAMP);
+    id->oncs = cpu_to_le16(NVME_ONCS_WRITE_ZEROS | NVME_ONCS_DSM | NVME_ONCS_TIMESTAMP);
     id->psd[0].mp = cpu_to_le16(0x9c4);
     id->psd[0].enlat = cpu_to_le32(0x10);
     id->psd[0].exlat = cpu_to_le32(0x4);
