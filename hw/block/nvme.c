@@ -450,7 +450,7 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqi
     case NVME_CMD_READ:
         return nvme_rw(n, ns, cmd, req);
     case NVME_CMD_DSM:
-      printf("trim\n");   # TODO: ranges data
+      printf("trim\n");   // TODO: ranges data
     default:
       printf("unknown\n");
         trace_nvme_err_invalid_opc(cmd->opcode);
