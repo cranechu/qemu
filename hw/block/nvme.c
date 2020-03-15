@@ -451,7 +451,7 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqi
     qemu_gettimeofday(&now);
     time = localtime(&now.tv_sec);
     strftime(tmbuf, sizeof(tmbuf), "%Y-%m-%d %H:%M:%S", time);
-    printf("%s, %06ld, %d, ", tmbuf, now.tv_usec, sqid);    // io recorder: timestamp
+    printf("pynvme: %d, %s.%06ld, ", sqid, tmbuf, now.tv_usec);    // io recorder: timestamp
     
     if (unlikely(nsid == 0 || nsid > n->num_namespaces)) {
         trace_nvme_err_invalid_ns(nsid, n->num_namespaces);
@@ -470,7 +470,6 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqi
     case NVME_CMD_DSM:
         return nvme_trim(n, ns, cmd, req);
     default:
-      printf("unknown\n");
         trace_nvme_err_invalid_opc(cmd->opcode);
         return NVME_INVALID_OPCODE | NVME_DNR;
     }
