@@ -354,11 +354,35 @@ static uint16_t nvme_trim(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     NvmeDsmCmd *dsm = (NvmeDsmCmd *)cmd;
     uint32_t attr = le16_to_cpu(dsm->attributes);
     uint32_t nr   = le16_to_cpu(dsm->nr) + 1;
+    uint64_t prp1 = le64_to_cpu(dsm->prp1);
+    uint64_t prp2 = le64_to_cpu(dsm->prp2);
+    NvmeDsmRange ranges[256];
+    char* buf = (char*)&ranges[0];
 
     if (attr & NVME_DSMGMT_AD)
     {
-      printf("%s, %d\n", "trims", nr);  // io recorder
+      printf("%s, ", "trims");  // io recorder
+
+      uint32_t len1 = 4096-prp1%4096;
+      assert(prp1 != 0);
+      //printf("%d, 0x%lx, ", len1, prp1);
+      nvme_addr_read(n, prp1, buf, len1);
+
+      if (len1!=4096 && prp2!=0)
+      {
+        uint32_t len2 = 4096-len1;
+        //printf("prp2, %d, 0x%lx, ", len2, prp2);
+        nvme_addr_read(n, prp2, &buf[len1], len2);
+      }
     }
+
+    // output 1 more range as a guard
+    for (int i=0; i<nr+1; i++)
+    {
+      printf("%ld, %d, ", ranges[i].slba, ranges[i].nlb);
+    }
+
+    printf("%d\n", nr);  // io recorder
     
     return NVME_SUCCESS;
 }
