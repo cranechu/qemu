@@ -474,8 +474,8 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqi
     struct timeval now;
     qemu_gettimeofday(&now);
     time = localtime(&now.tv_sec);
-    strftime(tmbuf, sizeof(tmbuf), "%Y-%m-%d %H:%M:%S", time);
-    printf("pynvme: %d, %s.%06ld, ", sqid, tmbuf, now.tv_usec);    // io recorder: timestamp
+    strftime(tmbuf, sizeof(tmbuf), "%Y-%m-%d:%H:%M %S", time);
+    printf("pynvme: %s.%06ld, %d, ", tmbuf, now.tv_usec, sqid);    // io recorder: timestamp
     
     if (unlikely(nsid == 0 || nsid > n->num_namespaces)) {
         trace_nvme_err_invalid_ns(nsid, n->num_namespaces);
