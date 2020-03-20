@@ -361,7 +361,7 @@ static uint16_t nvme_trim(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 
     if (attr & NVME_DSMGMT_AD)
     {
-      printf("%s, ", "trims");  // io recorder
+      printf("%s, %d, ", "trims", nr);  // io recorder
 
       uint32_t len1 = 4096-prp1%4096;
       assert(prp1 != 0);
@@ -374,15 +374,15 @@ static uint16_t nvme_trim(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
         //printf("prp2, %d, 0x%lx, ", len2, prp2);
         nvme_addr_read(n, prp2, &buf[len1], len2);
       }
-    }
 
-    // output 1 more range as a guard
-    for (int i=0; i<nr+1; i++)
-    {
-      printf("%ld, %d, ", ranges[i].slba, ranges[i].nlb);
-    }
+      // output 1 more range as a guard
+      for (int i=0; i<nr; i++)
+      {
+        printf("%ld, %d, ", ranges[i].slba, ranges[i].nlb);
+      }
 
-    printf("%d\n", nr);  // io recorder
+      printf("%d\n", nr);  // io recorder
+    }
     
     return NVME_SUCCESS;
 }
@@ -1420,7 +1420,7 @@ static void nvme_realize(PCIDevice *pci_dev, Error **errp)
 
     id->vid = cpu_to_le16(pci_get_word(pci_conf + PCI_VENDOR_ID));
     id->ssvid = cpu_to_le16(pci_get_word(pci_conf + PCI_SUBSYSTEM_VENDOR_ID));
-    strpadcpy((char *)id->mn, sizeof(id->mn), "Pynvme NVMe SSD", ' ');
+    strpadcpy((char *)id->mn, sizeof(id->mn), "Pynvme vSSD", ' ');
     strpadcpy((char *)id->fr, sizeof(id->fr), "1.0", ' ');
     strpadcpy((char *)id->sn, sizeof(id->sn), n->serial, ' ');
     id->rab = 6;
