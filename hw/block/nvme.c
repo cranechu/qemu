@@ -361,24 +361,22 @@ static uint16_t nvme_trim(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 
     if (attr & NVME_DSMGMT_AD)
     {
-      printf("%s, %d, ", "trims", nr);  // io recorder
+      printf("%s %d ", "trims", nr);  // io recorder
 
       uint32_t len1 = 4096-prp1%4096;
       assert(prp1 != 0);
-      //printf("%d, 0x%lx, ", len1, prp1);
       nvme_addr_read(n, prp1, buf, len1);
 
       if (len1!=4096 && prp2!=0)
       {
         uint32_t len2 = 4096-len1;
-        //printf("prp2, %d, 0x%lx, ", len2, prp2);
         nvme_addr_read(n, prp2, &buf[len1], len2);
       }
 
       // output 1 more range as a guard
       for (int i=0; i<nr; i++)
       {
-        printf("%ld, %d, ", ranges[i].slba, ranges[i].nlb);
+        printf("%ld %d ", ranges[i].slba, ranges[i].nlb);
       }
 
       printf("%d\n", nr);  // io recorder
@@ -398,7 +396,7 @@ static uint16_t nvme_write_zeros(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     uint64_t offset = slba << data_shift;
     uint32_t count = nlb << data_shift;
 
-    printf("%s, %ld, %d\n", "write_zeroes", slba, nlb);  // io recorder
+    printf("%s %ld %d\n", "write_zeroes", slba, nlb);  // io recorder
     
     if (unlikely(slba + nlb > ns->id_ns.nsze)) {
         trace_nvme_err_invalid_lba_range(slba, nlb, ns->id_ns.nsze);
@@ -431,7 +429,7 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
 
     trace_nvme_rw(is_write ? "write" : "read", nlb, data_size, slba);
 
-    printf("%s, %ld, %d\n", is_write?"write":"read", slba, nlb);  // io recorder
+    printf("%s %ld %d\n", is_write?"write":"read", slba, nlb);  // io recorder
 
     if (unlikely((slba + nlb) > ns->id_ns.nsze)) {
         block_acct_invalid(blk_get_stats(n->conf.blk), acct);
@@ -475,7 +473,7 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqi
     qemu_gettimeofday(&now);
     time = localtime(&now.tv_sec);
     strftime(tmbuf, sizeof(tmbuf), "%Y-%m-%d:%H:%M %S", time);
-    printf("pynvme: %s.%06ld, %d, ", tmbuf, now.tv_usec, sqid);    // io recorder: timestamp
+    printf("pynvme %s.%06ld %d ", tmbuf, now.tv_usec, sqid);    // io recorder: timestamp
     
     if (unlikely(nsid == 0 || nsid > n->num_namespaces)) {
         trace_nvme_err_invalid_ns(nsid, n->num_namespaces);
