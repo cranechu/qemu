@@ -482,10 +482,7 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqi
       start_us = now_us;
     }
     timestamp = now.tv_sec*US_PER_S+now.tv_usec - start_us;
-    printf("pynvme %05ld %09ld %d ",
-           timestamp/300/US_PER_S,
-           timestamp%(300*US_PER_S),
-           sqid);
+    printf("pynvme %ld %d ", timestamp, sqid);
     
     if (unlikely(nsid == 0 || nsid > n->num_namespaces)) {
         trace_nvme_err_invalid_ns(nsid, n->num_namespaces);
