@@ -467,13 +467,25 @@ static uint16_t nvme_io_cmd(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req, int sqi
     NvmeNamespace *ns;
     uint32_t nsid = le32_to_cpu(cmd->nsid);
 
-    char tmbuf[128];
-    struct tm* time;
+    // pynvme io recorder: timestamp
+    uint64_t timestamp;
+    uint64_t now_us;    
     struct timeval now;
+    static uint64_t start_us = 0;
+
+#define US_PER_S (1000*1000)
     qemu_gettimeofday(&now);
-    time = localtime(&now.tv_sec);
-    strftime(tmbuf, sizeof(tmbuf), "%Y-%m-%d:%H:%M %S", time);
-    printf("pynvme %s.%06ld %d ", tmbuf, now.tv_usec, sqid);    // io recorder: timestamp
+    now_us = now.tv_sec*US_PER_S + now.tv_usec;
+    if (start_us == 0)
+    {
+      // get the start time of test
+      start_us = now_us;
+    }
+    timestamp = now.tv_sec*US_PER_S+now.tv_usec - start_us;
+    printf("pynvme %05ld %09ld %d ",
+           timestamp/300/US_PER_S,
+           timestamp%(300*US_PER_S),
+           sqid);
     
     if (unlikely(nsid == 0 || nsid > n->num_namespaces)) {
         trace_nvme_err_invalid_ns(nsid, n->num_namespaces);
